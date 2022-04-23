@@ -8,35 +8,41 @@ from torch import nn
 import torch
 import wandb
 
-MAINPATH = '/work/shared/DEVCOM-SC21/Network'
-datatype = 'same_pic'
-save_dir_data = MAINPATH + f'/data/datasets/{datatype}/'
-img_dir = MAINPATH + f'/data/images/{datatype}/HighresScreenshot'
-log_dir = MAINPATH + f'/data/logs/{datatype}/SplinePath.log'
+from CIoU import CIoU
 
-#np.set_printoptions(threshold=sys.maxsize)
+
 if __name__ == "__main__":
     wandb.init(project="CS545_final", entity="jcscheufele")
-    new_name = "Just a test :)"
+    new_name = "New Data Test :)"
     wandb.run.name = new_name
     wandb.run.save()
 
-    train_dataset = BasicDataset()
-    torch.save(train_dataset, "same_pic_tr.pt")
-    print("data saved 1") #training_75000_pairNorm__greaterthan0_0.pt
+    '''tr_dataset = BasicDataset(0, 145)
+    torch.save(tr_dataset, "tr_dataset.pt")
+    print("tr data saved")
 
-    test_dataset = BasicDataset()
-    torch.save(test_dataset, "same_pic_te.pt")
-    print("data saved 2")
+    val_dataset = BasicDataset(145, 175)
+    torch.save(val_dataset, "val_dataset.pt")
+    print("val data saved")
 
-    #dataset = torch.load("same_pic.pt")
-    #print("data loaded")
+    te_dataset = BasicDataset(175, 206)
+    torch.save(te_dataset, "te_dataset.pt")
+    print("te data saved")'''
+    
+
+    
+    tr_dataset = torch.load("tr_dataset.pt")
+    print("tr data loaded")
+
+    val_dataset = torch.load("val_dataset.pt")
+    print("val data loaded")
+    
+
 
     shuffle = True
-    validation_split = .2
-    batch_size = 20
-    epochs = 100
-    learningrate = 0.001
+    batch_size = 1
+    epochs = 10000
+    learningrate = 1e-5 #1e-3
 
     wandb.config = {
     "learning_rate": learningrate,
@@ -44,37 +50,22 @@ if __name__ == "__main__":
     "batch_size": batch_size
     }
 
-    dataset_size = len(dataset)-2
-    indices = list(range(dataset_size)) # creates a list that creates a list of indices of the dataset
-    split = int(np.floor(validation_split * dataset_size)) #Finding the index to split the dataset at given percentent inputted above
-    
-    if shuffle: #if shuffle is chosen, it will shuffle before it is split
-        np.random.seed(112) #sets how it will be shuffles
-        np.random.shuffle(indices)
-    train_indices, val_indices = indices[split:], indices[:split]  #splits the dataset and assigns them to training and testing datasets
-
-    # Creating PT data samplers and loaders:
-    train_sampler = SubsetRandomSampler(train_indices) 
-    valid_sampler = SubsetRandomSampler(val_indices)
-
-    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler)
-    valid_loader = DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler)
+    train_loader = DataLoader(tr_dataset, batch_size=batch_size, shuffle=True)
+    valid_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
     print(len(train_loader.dataset))
     print(len(valid_loader.dataset))
 
-    in_features = (240*400*2)
     out_features = 4
-    print(in_features, out_features)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    model = BasicNetwork(in_features, out_features).to(device)
+    model = BasicNetwork(out_features).to(device)
     print(model)
 
-    loss_fn = nn.MSELoss(reduction='mean')
-    print_loss_fn = nn.MSELoss(reduction='none')
+    #loss_fn = nn.MSELoss(reduction='mean')
+    loss_fn = CIoU()
     optimizer = torch.optim.Adam(model.parameters(), lr=learningrate)
 
     tr_key = 0
@@ -83,7 +74,7 @@ if __name__ == "__main__":
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
 
-        if (epoch % int(epochs/20)) == 0:
+        if (epoch % int(10)) == 0:
             will_save = True
         else:
             will_save = False
@@ -94,8 +85,8 @@ if __name__ == "__main__":
             for dict1, dict2 in zip(training_dicts, testing_dicts):
                 wandb.log(dict1)
                 wandb.log(dict2)
-        wandb.log({"Epoch Training Loss":train_loss, #"Epoch Testing Loss": test_loss,
-        "Epoch Training Percent Error": train_error, #"Epoch Testing Percent Error": test_error, 
+        wandb.log({"Epoch Training Loss":train_loss, "Epoch Testing Loss": test_loss,
+        "Epoch Training Percent Error": train_error, "Epoch Testing Percent Error": test_error, 
         "Epoch epoch":epoch})
 
     save_loc = f"../../data/models/new/model_{new_name}.pt"
