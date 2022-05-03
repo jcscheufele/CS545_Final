@@ -13,34 +13,37 @@ from CIoU import CIoU
 
 if __name__ == "__main__":
     wandb.init(project="CS545_final", entity="jcscheufele")
-    new_name = "New Data Test :)"
+    new_name = "Smooth loss, preprocessing, 4 channel, leaky relu, lr=1e-5, dropout"
     wandb.run.name = new_name
     wandb.run.save()
 
     '''tr_dataset = BasicDataset(0, 145)
-    torch.save(tr_dataset, "tr_dataset.pt")
+    torch.save(tr_dataset, "tr_dataset_pre.pt")
     print("tr data saved")
 
     val_dataset = BasicDataset(145, 175)
-    torch.save(val_dataset, "val_dataset.pt")
+    torch.save(val_dataset, "val_dataset_pre.pt")
     print("val data saved")
 
     te_dataset = BasicDataset(175, 206)
-    torch.save(te_dataset, "te_dataset.pt")
+    torch.save(te_dataset, "te_dataset_pre.pt")
     print("te data saved")'''
     
-
     
-    tr_dataset = torch.load("tr_dataset.pt")
+    '''tr_dataset = torch.load("tr_dataset.pt")
     print("tr data loaded")
 
     val_dataset = torch.load("val_dataset.pt")
+    print("val data loaded")'''
+
+    tr_dataset = torch.load("tr_dataset_pre.pt")
+    print("tr data loaded")
+
+    val_dataset = torch.load("val_dataset_pre.pt")
     print("val data loaded")
     
-
-
     shuffle = True
-    batch_size = 1
+    batch_size = 10
     epochs = 10000
     learningrate = 1e-5 #1e-3
 
@@ -56,7 +59,8 @@ if __name__ == "__main__":
     print(len(train_loader.dataset))
     print(len(valid_loader.dataset))
 
-    out_features = 4
+    guesses = 3
+    out_features = 4*guesses
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
@@ -66,6 +70,7 @@ if __name__ == "__main__":
 
     #loss_fn = nn.MSELoss(reduction='mean')
     loss_fn = CIoU()
+    #loss_fn = nn.SmoothL1Loss(reduction='mean',beta=1)
     optimizer = torch.optim.Adam(model.parameters(), lr=learningrate)
 
     tr_key = 0
